@@ -1,37 +1,68 @@
 # WP-CLI Commands
 
-## Export Database
+The full list of built-in WP-CLI commands and examples can be found here:
 
+https://developer.wordpress.org/cli/commands/
+
+## WP-CLI not installed? Download and run it directly from the `phar` file
+
+First, download wp-cli.phar using wget or curl. For example:
+```
+curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+```
+Then, check if it works:
+```
+php wp-cli.phar --info
+```
+If so, you can run any command using `php wp-cli.phar` instead of the `wp` shortcut.
+https://make.wordpress.org/cli/handbook/installing/
+
+You can also set an alias for the current shell session:
+```
+alias wp="php /path/to/wp-cli.phar"
+alias wp="php $(pwd)/wp-cli.phar"
+```
+
+## Database Commands
+WordPress sites may use a unique DB Prefix. This sets the existing prefix as a variable for all future commands in the same session:
+```
+PFX="$(wp db prefix)"
+```
+Now instead of manually typing out the custom prefix, you can use `$(PFX)` for table names (`wp_options` becomes `$(PFX)options`).
+
+### Export Database
 ```
 wp db export
 ```
 
-## Search & Replace
-_Append `--dry-run` first, then if all looks good, run the command without it._
+### Search & Replace
+Append `--dry-run` first, then if all looks good, run the command without it.
+
+To avoid malformed URLs, have both URLs include or exclude the trailing slash!
 
 **_Basic search and replace in all tables. Useful for http->https conversion._**
 ```
-wp search-replace 'http://domain.com' 'https://domain.com' --skip-columns=guid --dry-run
+wp search-replace "http://domain.com" "https://domain.com" --skip-columns=guid --dry-run
 ```
 **_Remove `/year/month/day/` from hardcoded links. Make sure all links are https: first._**
 ```
-wp search-replace 'https://domain.com/([0-9]{4})/([0-9]{2})/([0-9]{2})/' 'https://domain.com/' --regex --skip-columns=guid --dry-run
+wp search-replace "https://domain.com/([0-9]{4})/([0-9]{2})/([0-9]{2})/" "https://domain.com/" --regex --skip-columns=guid --dry-run
 ```
-**_Remove `/year/month/` from hardcodedlinks. Make sure all links are https: first._**
+**_Remove `/year/month/` from hardcoded links. Make sure all links are https: first._**
 ```
-wp search-replace 'https://domain.com/([0-9]{4})/([0-9]{2})/' 'https://domain.com/' --regex --skip-columns=guid --dry-run
+wp search-replace "https://domain.com/([0-9]{4})/([0-9]{2})/" "https://domain.com/" --regex --skip-columns=guid --dry-run
 ```
 **_Change `/year/month/postname.html` to `/postname/` in permalinks. Make sure all links are https: first._**
 ```
-wp search-replace 'https://domain.com/([0-9]{4})/([0-9]{2})/(.*).html' 'https://domain.com/\3/' --regex --skip-columns=guid --dry-run
+wp search-replace "https://domain.com/([0-9]{4})/([0-9]{2})/(.*).html" "https://domain.com/\3/" --regex --skip-columns=guid --dry-run
 ```
 Better to make non-greedy...try the below version next time we do this change:
 ```
-wp search-replace "https:\/\/www\.domain\.com\/([0-9]{4})\/([0-9]{2})\/(.+?)\.html(\s|\/|'|\"|>)" 'https://www.domain.com/\3\4' --regex --skip-columns=guid --dry-run --log=year-month-html.log
+wp search-replace "https:\/\/www\.domain\.com\/([0-9]{4})\/([0-9]{2})\/(.+?)\.html(\s|\/|'|\"|>)" "https://www.domain.com/\3\4" --regex --skip-columns=guid --dry-run --log=year-month-html.log
 ```
 **_Change `/postname.html` to `/postname/` in permalinks. Make sure all links are https: first._**
 ```
-wp search-replace "https:\/\/www\.domain\.com/(.*?)\.html(\s|\/|'|\"|>)" 'https://www.domain.com/\1/\2' --regex --skip-columns=guid --log=remove-html.log --dry-run
+wp search-replace "https:\/\/www\.domain\.com/(.*?)\.html(\s|\/|'|\"|>)" "https://www.domain.com/\1/\2" --regex --skip-columns=guid --log=remove-html.log --dry-run
 ```
 **_Change `/category/postname/` to `/postname/` in permalinks. Make sure all links are https: first._**
 
@@ -45,72 +76,99 @@ Note, also, the `\1\2` in the replacement - this will carry over the slug _and_ 
 
 If there are subcategories, be sure to replace them first!
 
-The sample code below searches only in `wp_posts wp_postmeta wp_comments wp_commentmeta wp_term_taxonomy wp_termmeta wp_options` to speed the process.
+The sample code below searches only in `$(PFX)posts $(PFX)postmeta $(PFX)comments $(PFX)commentmeta $(PFX)term_taxonomy $(PFX)termmeta $(PFX)options` to speed the process.
 ```
-wp search-replace "https:\/\/domain\.com\/category-name\/subcategory-name\/(.+?)(\s|\/|'|\"|>)" "https://domain.com/\1\2" wp_posts wp_postmeta wp_comments wp_commentmeta wp_term_taxonomy wp_termmeta wp_options --regex --skip-columns=guid --dry-run
-wp search-replace "https:\/\/domain\.com\/category-name\/(.+?)(\s|\/|'|\"|>)" "https://domain.com/\1\2"wp_posts wp_postmeta wp_comments wp_commentmeta wp_term_taxonomy wp_termmeta wp_options --regex --skip-columns=guid --dry-run
+PFX="$(wp db prefix)"
+wp search-replace "https:\/\/domain\.com\/category-name\/subcategory-name\/(.+?)(\s|\/|'|\"|>)" "https://domain.com/\1\2" $(PFX)posts $(PFX)postmeta $(PFX)comments $(PFX)commentmeta $(PFX)term_taxonomy $(PFX)termmeta $(PFX)options --regex --skip-columns=guid --dry-run
+wp search-replace "https:\/\/domain\.com\/category-name\/(.+?)(\s|\/|'|\"|>)" "https://domain.com/\1\2" $(PFX)posts $(PFX)postmeta $(PFX)comments $(PFX)commentmeta $(PFX)term_taxonomy $(PFX)termmeta $(PFX)options --regex --skip-columns=guid --dry-run
 ```
-
-## Full list of built-in commands
-https://developer.wordpress.org/cli/commands/
-
-## WP-Cli not installed? Download it and run it directly from the Phar file.
-
-First, download wp-cli.phar using wget or curl. For example:
-
-```
-curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
-```
-
-Then, check if it works:
-```
-php wp-cli.phar --info
-```
-
-If so, you can run any command using `php wp-cli.phar` instead of the `wp` shortcut.
-https://make.wordpress.org/cli/handbook/installing/
 
 ## Malware Cleanup
 
-Check core & plugin integrity:
+Not all client sites use the latest WordPress version or the default `en_US` locale. Use these commands to set currently installed WordPress version and active locale as variables for core reinstall commands:
+```
+WP_VERSION="$(wp core version)"
+WP_LOCALE="$(wp language core list --status=active --field=language)"
+```
+
+Check core & (wordpress.org hosted) plugin integrity:
 ```
 wp core verify-checksums
 wp plugin verify-checksums --all --strict
 ```
 
-Quickly reinstall latest version of core files:
-
+### Core Replacement
+Quickly reinstall latest version of core:
 ```
-wp core download --force --skip-content
-```
-
-If infected/extra files found in `wp-admin` or `wp-includes`, quickly wipe those folders and then immediately reinstall. If working on a production site, run the above reinstall first to be sure that it will work.
-
-```
-rm -rf wp-admin wp-includes
-wp core download --force --skip-content
+wp core download --force --skip-content --locale="$WP_LOCALE"
 ```
 
-Reset **all** user passwords. Add `--skip-email` to not send an email notification.
-
+If infected/extra files are found in `wp-admin` or `wp-includes`, wipe those folders and then immediately reinstall. If working on a production site, run the above reinstall first to be sure that it will work:
 ```
-wp user reset-password $(wp user list --field=user_login)
+rm -rf wp-admin wp-includes && wp core download --force --skip-content
 ```
 
-Reset administrator and/or editor passwords. Add `--skip-email` to not send an email notification.
+Reinstall the currently installed WordPress core version and active locale:
+```
+wp core download --force --skip-content --version="$WP_VERSION" --locale="$WP_LOCALE"
+```
 
+Reinstall a specific WordPress core version and locale:
+```
+wp core download --force --skip-content --version="7.0" --locale="$WP_LOCALE"
+```
+
+### Plugin Replacement
+Replacing non checksum matching wordpress.org plugins can be done with this command (Replace `<SLUG>` before running):
+```
+PLUGIN_SLUG="<SLUG>" && PLUGIN_VERSION="$(wp plugin get "$PLUGIN_SLUG" --field=version)" && wp plugin install "$PLUGIN_SLUG" --force --version="$PLUGIN_VERSION"
+```
+Reinstall all plugins to current versions (premium plugins will error, but not prevent the process):
+```
+wp plugin list --field=name | xargs -I % sh -c 'v=$(wp plugin get "%" --field=version) && wp plugin install "%" --force --version="$v"'
+```
+
+### User Actions
+List existing (and potentially hidden) users:
+```
+wp user list --role=administrator
+wp user list --role=editor
+wp user list --role=author
+```
+
+View active session token data for a specific user:
+```
+wp user session list <USER|ID> --fields=login_time,expiration_time,ip,ua
+```
+
+Kill all sessions for a specific user:
+```
+wp user session destroy <USER|ID> --all
+```
+
+Reset **all** user passwords. Add `--skip-email` to not send an email notification:
+```
+wp user reset-password $(wp user list --field=ID)
+```
+
+Reset administrator and/or editor passwords. Add `--skip-email` to not send an email notification:
 ```
 wp user reset-password $(wp user list --field=user_login --role=administrator)
-wp user reset-password $(wp user list --field=user_login --role=editor)
-wp user reset-password $(wp user list --role="administrator" --field=user_login && wp user list --role="editor" --field=user_login)
+wp user reset-password $(wp user list --role=administrator --field=ID && wp user list --role=editor --field=ID)
 ```
 
-Reset a single user's password & display the new password (and don't send an email).
+Reset and display a single user's password without sending an email:
+```
+wp user reset-password <USER|ID> --show-password --skip-email
+```
 
+Refresh/Shuffle wp-config.php salts (Logs out all users):
 ```
-wp user reset-password username --show-password --skip-email
+wp config shuffle-salts
 ```
+
 ## List Info
+See the [Create CSV Reports with WP-CLI](https://app.getguru.com/card/ceybrzAi/Create-CSV-Reports-with-WPCLI) Guru card for examples and existing report templates.
 
 Get a CSV (post_title,post_date,ID) of published posts inside a certain category.
 ```
